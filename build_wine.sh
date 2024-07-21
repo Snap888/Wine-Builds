@@ -292,17 +292,17 @@ if [ -n "${CUSTOM_SRC_PATH}" ]; then
 		cp -r "${CUSTOM_SRC_PATH}" wine
 	fi
 
-	WINE_VERSION="$(cat wine/VERSION | tail -c +14)"
+	WINE_VERSION="8.18"
 	BUILD_NAME="${WINE_VERSION}"-custom
 elif [ "$WINE_BRANCH" = "staging-tkg" ]; then
 	git clone https://github.com/Kron4ek/wine-tkg wine
 
-	WINE_VERSION="$(cat wine/VERSION | tail -c +14)"
+	WINE_VERSION="8.18"
 	BUILD_NAME="${WINE_VERSION}"-staging-tkg
 elif [ "$WINE_BRANCH" = "wayland" ]; then
 	git clone https://github.com/Kron4ek/wine-wayland wine
 
-	WINE_VERSION="$(cat wine/VERSION | tail -c +14)"
+	WINE_VERSION="8.18"
 	BUILD_NAME="${WINE_VERSION}"-wayland
 
 	export WINE_BUILD_OPTIONS="--without-x --without-xcomposite \
@@ -368,10 +368,10 @@ else
     BUILD_NAME="${WINE_VERSION}"-staging
 fi
 
-    wget -q --show-progress "https://github.com/wine-staging/wine-staging/archive/v${WINE_VERSION}.tar.gz"
-    tar xf v"${WINE_VERSION}".tar.gz
+    wget -q --show-progress "https://github.com/wine-staging/wine-staging/archive/v8.18.tar.gz"
+    tar xf v8.18.tar.gz
 
-    if [ ! -f v"${WINE_VERSION}".tar.gz ]; then
+    if [ ! -f v8.18.tar.gz ]; then
         git clone https://github.com/wine-staging/wine-staging wine-staging-"${WINE_VERSION}"
     fi
 fi
