@@ -349,7 +349,7 @@ else
 
         if [ "$WINE_BRANCH" = "staging" ] || [ "$WINE_BRANCH" = "vanilla" ]; then
 	if [ "${WINE_VERSION}" = "git" ]; then
-    git clone https://github.com/wine-staging/wine-staging wine-staging-"${WINE_VERSION}"
+    git clone https://github.com/wine-staging/wine-staging wine-staging-v8.1
     upstream_commit="$(cat wine-staging-"${WINE_VERSION}"/staging/upstream-commit | head -c 7)"
     git -C wine checkout "${upstream_commit}"
     if [ "$WINE_BRANCH" = "vanilla" ]; then
