@@ -1,4 +1,4 @@
-diff -uraN wine-orig/dlls/ntdll/unix/server.c wine/dlls/ntdll/unix/server.c
+```diff
 --- wine-orig/dlls/ntdll/unix/server.c	2024-03-23 16:35:53.179464396 +0500
 +++ wine/dlls/ntdll/unix/server.c	2024-03-23 16:25:18.755464638 +0500
 @@ -1664,6 +1664,7 @@
@@ -14,9 +14,9 @@ diff -uraN wine-orig/dlls/ntdll/unix/server.c wine/dlls/ntdll/unix/server.c
      SERVER_START_REQ( init_process_done )
      {
 +        if (cpu_override)
-+            wine_server_add_data( req, cpu_override, sizeof(*cpu_override) );
-         req->teb      = wine_server_client_ptr( teb );
-         req->peb      = NtCurrentTeb64() ? NtCurrentTeb64()->Peb : wine_server_client_ptr( peb );
++            wine_server_add_data(req, cpu_override, sizeof(*cpu_override));
+         req->teb      = wine_server_client_ptr(teb);
+         req->peb      = NtCurrentTeb64() ? NtCurrentTeb64()->Peb : wine_server_client_ptr(peb);
  #ifdef __i386__
 diff -uraN wine-orig/dlls/ntdll/unix/system.c wine/dlls/ntdll/unix/system.c
 --- wine-orig/dlls/ntdll/unix/system.c	2024-03-23 16:34:20.907464432 +0500
@@ -205,12 +205,9 @@ diff -uraN wine-orig/dlls/ntdll/unix/system.c wine/dlls/ntdll/unix/system.c
              }
 -            else phys_core = i;
  
-             if (!logical_proc_info_add_by_id( RelationProcessorCore, phys_core, thread_mask ))
+             if (!logical_proc_info_add_by_id(RelationProcessorCore, phys_core, thread_mask))
              {
-@@ -1009,36 +1122,40 @@
-                 return STATUS_NO_MEMORY;
-             }
- 
+@@ -1009
 +            unsigned int cpu_id;
 +
 +            cpu_id = cpu_override.mapping.cpu_count ? cpu_override.mapping.host_cpu_id[i] : i;
@@ -255,7 +252,7 @@ diff -uraN wine-orig/dlls/ntdll/unix/system.c wine/dlls/ntdll/unix/system.c
                  fscanf(f, "%u%c", &r, &op);
 @@ -1047,7 +1164,7 @@
                      WARN("unknown cache size %u%c\n", r, op);
-                 cache.Size = (op=='K' ? r*1024 : r);
+                 cache.Size = (op == 'K' ? r * 1024 : r);
  
 -                snprintf(name, sizeof(name), cache_info, i, j, "type");
 +                snprintf(name, sizeof(name), cache_info, cpu_id, j, "type");
@@ -279,7 +276,7 @@ diff -uraN wine-orig/dlls/ntdll/unix/system.c wine/dlls/ntdll/unix/system.c
 +                    assert(mask);
 +                }
 +
-                 if (!logical_proc_info_add_cache( mask, &cache ))
+                 if (!logical_proc_info_add_cache(mask, &cache))
                  {
                      fclose(fcpu_list);
 @@ -1066,6 +1196,9 @@
@@ -302,8 +299,8 @@ diff -uraN wine-orig/dlls/ntdll/unix/system.c wine/dlls/ntdll/unix/system.c
 +
 +    peb->NumberOfProcessors = cpu_override.mapping.cpu_count
 +            ? cpu_override.mapping.cpu_count : num;
-     get_cpuinfo( &cpu_info );
-     TRACE( "<- CPU arch %d, level %d, rev %d, features 0x%x\n",
+     get_cpuinfo(&cpu_info);
+     TRACE("<- CPU arch %d, level %d, rev %d, features 0x%x\n",
             (int)cpu_info.ProcessorArchitecture, (int)cpu_info.ProcessorLevel,
 diff -uraN wine-orig/dlls/ntdll/unix/thread.c wine/dlls/ntdll/unix/thread.c
 --- wine-orig/dlls/ntdll/unix/thread.c	2024-03-23 16:34:20.907464432 +0500
@@ -334,12 +331,12 @@ diff -uraN wine-orig/dlls/ntdll/unix/unix_private.h wine/dlls/ntdll/unix/unix_pr
 --- wine-orig/dlls/ntdll/unix/unix_private.h	2024-03-23 16:35:53.723464396 +0500
 +++ wine/dlls/ntdll/unix/unix_private.h	2024-03-23 16:23:25.551464682 +0500
 @@ -332,6 +332,7 @@
- extern NTSTATUS get_device_info( int fd, struct _FILE_FS_DEVICE_INFORMATION *info );
+ extern NTSTATUS get_device_info(int fd, struct _FILE_FS_DEVICE_INFORMATION *info);
  extern void init_files(void);
  extern void init_cpu_info(void);
 +extern struct cpu_topology_override *get_cpu_topology_override(void);
- extern void add_completion( HANDLE handle, ULONG_PTR value, NTSTATUS status, ULONG info, BOOL async );
- extern void set_async_direct_result( HANDLE *async_handle, NTSTATUS status, ULONG_PTR information, BOOL mark_pending );
+ extern void add_completion(HANDLE handle, ULONG_PTR value, NTSTATUS status, ULONG info, BOOL async);
+ extern void set_async_direct_result(HANDLE *async_handle, NTSTATUS status, ULONG_PTR information, BOOL mark_pending);
  
 diff -uraN wine-orig/include/wine/server_protocol.h wine/include/wine/server_protocol.h
 --- wine-orig/include/wine/server_protocol.h	2024-03-23 16:35:56.763464395 +0500
@@ -369,21 +366,21 @@ diff -uraN wine-orig/server/process.c wine/server/process.c
 --- wine-orig/server/process.c	2024-03-23 16:35:53.331464396 +0500
 +++ wine/server/process.c	2024-03-23 16:28:25.687464567 +0500
 @@ -98,6 +98,7 @@
- static void process_destroy( struct object *obj );
- static int process_get_esync_fd( struct object *obj, enum esync_type *type );
- static void terminate_process( struct process *process, struct thread *skip, int exit_code );
-+static void set_process_affinity( struct process *process, affinity_t affinity );
+ static void process_destroy(struct object *obj);
+ static int process_get_esync_fd(struct object *obj, enum esync_type *type);
+ static void terminate_process(struct process *process, struct thread *skip, int exit_code);
++static void set_process_affinity(struct process *process, affinity_t affinity);
  
  static const struct object_ops process_ops =
  {
 @@ -691,6 +692,7 @@
-     memset( &process->image_info, 0, sizeof(process->image_info) );
-     list_init( &process->rawinput_entry );
+     memset(&process->image_info, 0, sizeof(process->image_info));
+     list_init(&process->rawinput_entry);
      process->esync_fd        = -1;
 +    process->cpu_override.cpu_count = 0;
-     list_init( &process->kernel_object );
-     list_init( &process->thread_list );
-     list_init( &process->locks );
+     list_init(&process->kernel_object);
+     list_init(&process->thread_list);
+     list_init(&process->locks);
 @@ -1435,6 +1437,8 @@
  DECL_HANDLER(init_process_done)
  {
@@ -394,8 +391,8 @@ diff -uraN wine-orig/server/process.c wine/server/process.c
      if (is_process_init_done(process))
      {
 @@ -1456,6 +1460,9 @@
-         process->idle_event = create_event( NULL, NULL, 0, 1, 0, NULL );
-     if (process->debug_obj) set_process_debug_flag( process, 1 );
+         process->idle_event = create_event(NULL, NULL, 0, 1, 0, NULL);
+     if (process->debug_obj) set_process_debug_flag(process, 1);
      reply->suspend = (current->suspend || process->suspend);
 +
 +    if (have_cpu_override)
@@ -416,109 +413,4 @@ diff -uraN wine-orig/server/process.h wine/server/process.h
  /* process functions */
 diff -uraN wine-orig/server/protocol.def wine/server/protocol.def
 --- wine-orig/server/protocol.def	2024-03-23 16:35:53.723464396 +0500
-+++ wine/server/protocol.def	2024-03-23 16:23:25.555464682 +0500
-@@ -874,6 +874,12 @@
-     lparam_t info;
- } cursor_pos_t;
- 
-+struct cpu_topology_override
-+{
-+    unsigned int cpu_count;
-+    unsigned char host_cpu_id[64];
-+};
-+
- /****************************************************************/
- /* Request declarations */
- 
-@@ -935,6 +941,7 @@
- 
- /* Signal the end of the process initialization */
- @REQ(init_process_done)
-+    VARARG(cpu_override,cpu_topology_override); /* Overridden CPUs to host CPUs mapping. */
-     client_ptr_t teb;          /* TEB of new thread (in process address space) */
-     client_ptr_t peb;          /* PEB of new process (in process address space) */
-     client_ptr_t ldt_copy;     /* address of LDT copy (in process address space) */
-diff -uraN wine-orig/server/thread.c wine/server/thread.c
---- wine-orig/server/thread.c	2024-03-23 16:35:54.091464396 +0500
-+++ wine/server/thread.c	2024-03-23 16:23:25.555464682 +0500
-@@ -601,8 +601,19 @@
- 
-         CPU_ZERO( &set );
-         for (i = 0, mask = 1; mask; i++, mask <<= 1)
--            if (affinity & mask) CPU_SET( i, &set );
--
-+            if (affinity & mask)
-+            {
-+                if (thread->process->cpu_override.cpu_count)
-+                {
-+                    if (i >= thread->process->cpu_override.cpu_count)
-+                        break;
-+                    CPU_SET( thread->process->cpu_override.host_cpu_id[i], &set );
-+                }
-+                else
-+                {
-+                    CPU_SET( i, &set );
-+                }
-+            }
-         ret = sched_setaffinity( thread->unix_tid, sizeof(set), &set );
-     }
- #endif
-@@ -1478,7 +1489,7 @@
- 
-     if (!process->parent_id)
-         process->affinity = current->affinity = get_thread_affinity( current );
--    else
-+    else if (!process->cpu_override.cpu_count)
-         set_thread_affinity( current, current->affinity );
- 
-     debug_level = max( debug_level, req->debug_level );
-@@ -1507,10 +1518,12 @@
-     current->unix_tid = req->unix_tid;
-     current->teb      = req->teb;
-     current->entry_point = req->entry;
-+    struct process *process = current->process;
- 
-     init_thread_context( current );
-     generate_debug_event( current, DbgCreateThreadStateChange, &req->entry );
--    set_thread_affinity( current, current->affinity );
-+    if (!process->cpu_override.cpu_count)
-+        set_thread_affinity( current, current->affinity );
- 
-     reply->suspend = (current->suspend || current->process->suspend || current->context != NULL);
- }
-diff -uraN wine-orig/server/trace.c wine/server/trace.c
---- wine-orig/server/trace.c	2024-03-23 16:35:56.779464395 +0500
-+++ wine/server/trace.c	2024-03-23 16:23:25.555464682 +0500
-@@ -1359,6 +1359,24 @@
-     fputc( '}', stderr );
- }
- 
-+static void dump_varargs_cpu_topology_override( const char *prefix, data_size_t size )
-+{
-+    const struct cpu_topology_override *cpu_topology = cur_data;
-+    unsigned int i;
-+
-+    if (size < sizeof(*cpu_topology))
-+        return;
-+
-+    fprintf( stderr,"%s{", prefix );
-+    for (i = 0; i < cpu_topology->cpu_count; ++i)
-+    {
-+        if (i) fputc( ',', stderr );
-+        fprintf( stderr, "%u", cpu_topology->host_cpu_id[i] );
-+    }
-+    fputc( '}', stderr );
-+    remove_data( size );
-+}
-+
- typedef void (*dump_func)( const void *req );
- 
- /* Everything below this line is generated automatically by tools/make_requests */
-@@ -1466,6 +1484,7 @@
-     fprintf( stderr, ", wait_fd=%d", req->wait_fd );
-     dump_uint64( ", teb=", &req->teb );
-     dump_uint64( ", entry=", &req->entry );
-+    dump_varargs_cpu_topology_override( ", cpu_override=", cur_size );
- }
- 
- static void dump_init_thread_reply( const struct init_thread_reply *req )
++++ wine
