@@ -102,7 +102,7 @@ export BUILD_DIR="${HOME}"/build_wine
 # New WoW64 builds will use a different bootstrap which require different
 # variables and they are not compatible with old WoW64 build mode.
 if [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
-
+export WINE_VERSION="8.18"
    export BOOTSTRAP_X64=/opt/chroots/noble64_chroot
 
    export scriptdir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
@@ -337,7 +337,7 @@ elif [ "$WINE_BRANCH" = "proton" ]; then
 	fi
 else
 	if [ "${WINE_VERSION}" = "git" ]; then
-		git clone https://gitlab.com/DragoPayras228/wine-8-18
+		git clone http://gitlab.winehq.org/wine/wine.git
 		BUILD_NAME="${WINE_VERSION}-$(git -C wine rev-parse --short HEAD)"
 	else
 		BUILD_NAME="${WINE_VERSION}"
