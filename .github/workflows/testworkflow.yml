@@ -46,7 +46,7 @@ jobs:
           chmod +x build_wine.sh
           export TERMUX_GLIBC="true"
           export EXPERIMENTAL_WOW64="true"
-          export WINE_VERSION="git"
+          export WINE_VERSION="9.0"
           export USE_CCACHE="true"  # Enable ccache usage
           export CCACHE_DIR=$GITHUB_WORKSPACE/.ccache  # Set ccache directory inside the repository
           export PATH="/usr/lib/ccache:$PATH"  # Ensure ccache is in the PATH
